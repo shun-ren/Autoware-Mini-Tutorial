@@ -4,9 +4,7 @@ import rospy
 from std_msgs.msg import String
 
 class Publisher:
-    def __init__(self):
-
-
+    def __init__(self):   #resolve issue 1 (2 blank space)
         # Parameters
         self.message = rospy.get_param('~message', 'Hello World!')
         self.rate_hz = rospy.get_param('~rate', 2)
