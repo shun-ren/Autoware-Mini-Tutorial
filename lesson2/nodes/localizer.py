@@ -38,13 +38,13 @@ class Localizer:
 
     def transform_coordinates(self, msg):
         # TODO 1: 
-        print(msg.latitude, msg.longitude)
+        #print(msg.latitude, msg.longitude)
 
         # TODO 2: Transform msg.latitude and msg.longitude to UTM coordinates using
         transformed_x, transformed_y = self.transformer.transform(msg.latitude, msg.longitude)
         transformed_x -= self.origin_x
         transformed_y -= self.origin_y
-        print(transformed_x, transformed_y)
+        #print(transformed_x, transformed_y)
 
         # TODO 3: Calculate orientation as a quaternion.
         #         - Get azimuth correction: self.utm_projection.get_factors(msg.longitude, msg.latitude).meridian_convergence
@@ -93,11 +93,9 @@ class Localizer:
         transform_msg.child_frame_id = "base_link"
         transform_msg.transform.translation.x = transformed_x
         transform_msg.transform.translation.y = transformed_y
-        transform_msg.transform.translation.z = msg.height - self.undulation
+        transform_msg.transform.translation.z = current_pose_msg.pose.position.z #issue 1, like what the assistant professor mentioned, there wasnt a need to do a recalculation.
         transform_msg.transform.rotation = orientation
         self.br.sendTransform(transform_msg)
-        
-        
 
     @staticmethod
     def convert_azimuth_to_yaw(azimuth):
