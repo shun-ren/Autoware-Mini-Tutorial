@@ -1,11 +1,11 @@
 <launch>
     <node pkg="autoware_mini_tutorial" name="publisher" type="publisher.py" output="screen" required="true" >
          <param name="message" value="Hello ROS!" />
-         <param name="rate" value="2" />  #resolve issue 2. Defined rate parameter to 2
+         <param name="rate" value="2" />  
     </node>
     <node pkg="autoware_mini_tutorial" name="publisher_2" type="publisher.py" output="screen" required="true" >
          <param name="message" value="Hello ROS 2!" />
-         <param name="rate" value="5" />  #resolve issue 2. Defined rate parameter to 5
+         <param name="rate" value="5" />  
     </node>
     <node pkg="autoware_mini_tutorial" name="subscriber" type="subscriber.py" output="screen" required="true"/>
 </launch>
