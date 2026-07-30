@@ -37,12 +37,19 @@ class PurePursuitFollower:
             path_linestring = None
             distance_to_velocity_interpolator = None
         else:
+            # Convert waypoints to a shapely LineString and prepare it for spatial queries.
             path_linestring = LineString([(w.position.x, w.position.y) for w in msg.waypoints])
             prepare(path_linestring)
+            # Creating a distance-to-velocity interpolator for the path.
+            # Collect waypoint x and y coordinates
             waypoints_xy = np.array([(w.position.x, w.position.y) for w in msg.waypoints])
+            # Calculate cumulative distances between points
             distances = np.cumsum(np.sqrt(np.sum(np.diff(waypoints_xy, axis=0)**2, axis=1)))
+            # Add 0 distance in the beginning
             distances = np.insert(distances, 0, 0)
+            # Extract velocity values at waypoints
             velocities = np.array([w.speed for w in msg.waypoints])
+            # Create interpolator (experiment with `bounds_error` and `fill_value` to create logical behavior when the ego vehicle is before the first waypoint or after the last one)
             distance_to_velocity_interpolator = interp1d(distances, velocities, kind='linear', bounds_error=False, fill_value=0.0)
 
         with self.lock:
@@ -55,18 +62,28 @@ class PurePursuitFollower:
             linear_velocity = 0.0
             linear_acceleration = -3.0
         else:
+            # Calculate the ego vehicle's distance from the path start.
+            # Convert ego position to a shapely Point
+            # Use self.path_linestring.project() to find the distance
             current_pose = Point([msg.pose.position.x, msg.pose.position.y])
             d_ego_from_path_start = self.path_linestring.project(current_pose)
-            # print("Distance from path start:", d_ego_from_path_start)
-            
+
+            # Calculating the steering angle using the Pure Pursuit formula.
+            # Get heading from current pose orientation
             _, _, heading = euler_from_quaternion([msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])
+            # Calculate lookahead point on the path
             lookahead_point = self.path_linestring.interpolate(d_ego_from_path_start + self.lookahead_distance)
+            # Calculate lookahead heading
             lookahead_heading = np.arctan2(lookahead_point.y - msg.pose.position.y, lookahead_point.x - msg.pose.position.x) 
+            # Recalculate the actual lookahead distance (direct distance between points)
             ld = current_pose.distance(lookahead_point)
+            # Calculate steering angle using the Pure Pursuit formula
             steering_angle = np.arctan2(2 * self.wheel_base * np.sin(lookahead_heading - heading), ld)
             linear_velocity = float(self.distance_to_velocity_interpolator(d_ego_from_path_start))
             linear_acceleration = 0.0
-
+            
+        #Use the distance-to-velocity interpolator to get the velocity at the ego vehicle's current distance along the path.
+        # Create and publish a VehicleCommand message with constant steering angle and velocity for testing.
         vehicle_cmd = VehicleCommand()
         vehicle_cmd.header.stamp = msg.header.stamp
         vehicle_cmd.header.frame_id = "base_link"
@@ -77,7 +94,6 @@ class PurePursuitFollower:
 
     def run(self):
         rospy.spin()
-
 
 if __name__ == '__main__':
     rospy.init_node('pure_pursuit_follower')
