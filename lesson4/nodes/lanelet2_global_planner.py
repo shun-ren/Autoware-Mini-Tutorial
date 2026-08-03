@@ -88,10 +88,7 @@ class GlobalPlanner:
                 rospy.loginfo("%s - Goal position reached. Distance to goal: %.2f m", rospy.get_name(), distance_to_goal)
                 self.goal_point = None
                 # Publish an empty path to indicate goal reached
-                empty_path = Path()
-                empty_path.header.frame_id = self.output_frame
-                empty_path.header.stamp = rospy.Time.now()
-                self.global_path_pub.publish(empty_path)
+                self.publish_lane_from_waypoints_list([])
 
     def convert_laneletseq_to_waypoints_list(self, laneletseq):
         waypoints = []
