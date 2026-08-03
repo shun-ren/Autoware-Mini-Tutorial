@@ -27,9 +27,6 @@ class PointsClusterer:
 
     def points_callback(self, msg):
         data = numpify(msg)
-        if len(data) == 0:
-            return
-
         points = structured_to_unstructured(data[['x', 'y', 'z']], dtype=np.float32)
         if len(points) == 0:
             return
