@@ -75,15 +75,12 @@ class GlobalPlanner:
             return
         # Get path without lane changes
         path_no_lane_change = path.getRemainingLane(start_lanelet)
-        #print(path_no_lane_change)
         waypoints = self.convert_laneletseq_to_waypoints_list(path_no_lane_change)
         self.publish_lane_from_waypoints_list(waypoints)
 
     def current_pose_callback(self, msg):
         with self.lock:
             self.current_location = BasicPoint2d(msg.pose.position.x, msg.pose.position.y)
-        if self.goal_point is None:
-            return
         if self.current_location and self.goal_point:
             distance_to_goal = np.sqrt((self.current_location.x - self.goal_point.x) ** 2 +
                                         (self.current_location.y - self.goal_point.y) ** 2)
@@ -115,10 +112,60 @@ class GlobalPlanner:
                 waypoint.position.z = point.z
                 waypoint.speed = speed
                 waypoints.append(waypoint)
-        if waypoints:
-            last_waypoint = waypoints[-1]
-            last_waypoint.position.x = self.goal_point.x
-            last_waypoint.position.y = self.goal_point.y
+        # No goal or no path
+        if len(waypoints) < 2 or self.goal_point is None:
+            return waypoints
+
+            # Find closest point on the path to the goal
+        goal = np.array([
+            self.goal_point.x,
+            self.goal_point.y
+        ])
+        closest_distance = float("inf")
+        closest_segment = 0
+        closest_point = None
+        for i in range(len(waypoints) - 1):
+            start = np.array([
+                waypoints[i].position.x,
+                waypoints[i].position.y
+            ])
+            end = np.array([
+                waypoints[i + 1].position.x,
+                waypoints[i + 1].position.y
+            ])
+            segment = end - start
+            segment_length_squared = np.dot(segment, segment)
+            # Ignore duplicate points
+            if segment_length_squared == 0:
+                continue
+            # Projection of goal onto lane segment
+            t = np.dot(goal - start, segment) / segment_length_squared
+            # Limit projection between the two points
+            t = np.clip(t, 0.0, 1.0)
+            projected_point = start + t * segment
+            distance = np.linalg.norm(goal - projected_point)
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_segment = i
+                closest_point = projected_point
+        # Safety check
+        if closest_point is None:
+            return waypoints
+        # Remove path after goal
+        waypoints = waypoints[:closest_segment + 1]
+        # Add projected goal waypoint
+        goal_waypoint = Waypoint()
+        goal_waypoint.position.x = closest_point[0]
+        goal_waypoint.position.y = closest_point[1]
+        goal_waypoint.position.z = waypoints[-1].position.z
+        # Stop at goal
+        goal_waypoint.speed = 0.0
+        waypoints.append(goal_waypoint)
+        # Update goal to the actual lane position
+        self.goal_point = BasicPoint2d(
+            closest_point[0],
+            closest_point[1]
+        )
         return waypoints
 
     def publish_lane_from_waypoints_list(self, waypoints):
@@ -130,7 +177,6 @@ class GlobalPlanner:
 
     def run(self):
         rospy.spin()
-
 
 if __name__ == '__main__':
     rospy.init_node('global_planner')
