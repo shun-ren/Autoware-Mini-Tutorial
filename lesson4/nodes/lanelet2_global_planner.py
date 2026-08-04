@@ -81,7 +81,6 @@ class GlobalPlanner:
     def current_pose_callback(self, msg):
         with self.lock:
             self.current_location = BasicPoint2d(msg.pose.position.x, msg.pose.position.y)
-        if self.current_location and self.goal_point:
             distance_to_goal = np.sqrt((self.current_location.x - self.goal_point.x) ** 2 +
                                         (self.current_location.y - self.goal_point.y) ** 2)
             if distance_to_goal <= self.distance_to_goal_limit:
