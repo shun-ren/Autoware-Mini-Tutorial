@@ -81,13 +81,14 @@ class GlobalPlanner:
     def current_pose_callback(self, msg):
         with self.lock:
             self.current_location = BasicPoint2d(msg.pose.position.x, msg.pose.position.y)
+        if self.goal_point:
             distance_to_goal = np.sqrt((self.current_location.x - self.goal_point.x) ** 2 +
                                         (self.current_location.y - self.goal_point.y) ** 2)
             if distance_to_goal <= self.distance_to_goal_limit:
-                rospy.loginfo("%s - Goal position reached. Distance to goal: %.2f m", rospy.get_name(), distance_to_goal)
-                self.goal_point = None
-                # Publish an empty path to indicate goal reached
-                self.publish_lane_from_waypoints_list([])
+                    
+                    rospy.loginfo("%s - Goal position reached. Distance to goal: %.2f m", rospy.get_name(), distance_to_goal)
+                    self.goal_point = None
+                    self.publish_lane_from_waypoints_list([]) # Publish an empty path to indicate goal reached
 
     def convert_laneletseq_to_waypoints_list(self, laneletseq):
         waypoints = []
