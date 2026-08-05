@@ -91,31 +91,20 @@ class SimpleCollisionChecker:
                                                   for i in range(0, len(obj.convex_hull), 3)])
                 if local_path_buffer.intersects(object_polygon):
                     intersection_geometry = local_path_buffer.intersection(object_polygon)
-                    if intersection_geometry.geom_type == "Polygon":# Extract coordinates from intersection geometry
-                        intersection_points = list(intersection_geometry.exterior.coords)
-                    elif intersection_geometry.geom_type == "LineString":
-                        intersection_points = list(intersection_geometry.coords)
-                    elif intersection_geometry.geom_type == "MultiLineString":
-                        intersection_points = []
-                        for line in intersection_geometry.geoms:
-                            intersection_points.extend(list(line.coords))
-                    elif intersection_geometry.geom_type == "Point":
-                        intersection_points = [(intersection_geometry.x, intersection_geometry.y)]
-                    else:
-                        intersection_points = []
+                    intersection_points = shapely.get_coordinates(intersection_geometry)
                     for x, y in intersection_points:
                         collision_points = np.append(
                             collision_points,
                             np.array([(
                                 x,
                                 y,
-                                0.0,
+                                obj.centroid.z,
                                 obj.velocity.x,
                                 obj.velocity.y,
-                                0.0,
+                                obj.velocity.z,
                                 self.braking_safety_distance_obstacle,
                                 np.inf,
-                                3
+                                4
                             )], dtype=DTYPE)
                         )
                         
@@ -129,7 +118,7 @@ class SimpleCollisionChecker:
             goal_point_shapely = shapely.Point(goal_point.x, goal_point.y)
             if local_path_buffer.intersects(goal_point_shapely.buffer(0.1)):
                 collision_points = np.append(collision_points, np.array(
-                    [(goal_point.x, goal_point.y, 0.0, 0.0, 0.0, 0.0, self.braking_safety_distance_goal, np.inf, 1
+                    [(goal_point.x, goal_point.y, goal_point.z, 0.0, 0.0, 0.0, self.braking_safety_distance_goal, np.inf, 1
                     )], dtype=DTYPE))
 
         # TODO 9 (lesson 7): add stop line collision points for red traffic lights
