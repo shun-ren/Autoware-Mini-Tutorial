@@ -81,6 +81,10 @@ Your framework from the previous lessons is a simplified one. Remember all limit
 **Framework failure:** The prediction module assumed the other vehicle would continue straight and failed to account for sudden changes in trajectory.
 **Suggested improvement:** Enhance trajectory prediction by considering multiple possible maneuvers and responding more cautiously when another vehicle's intent is uncertain.
 
+### Failure Case 4
 
+**Scenario:**  Two red cars blocked the autonomous vehicle's view of a jaywalking pedestrian crossing the road to reach a school. The pedestrian emerged from the blind spot, and the autonomous vehicle collided with them.
+**Framework failure:**The perception system was unable to detect the pedestrian due to occlusion, and the planning module did not adequately account for the possibility of a pedestrian emerging from a blind spot.
+**Suggested improvement:** Improve occlusion-aware perception and risk assessment by anticipating hidden pedestrians near schools or other high-risk environments, and adopt more cautious driving behavior when visibility is obstructed.
 
 
