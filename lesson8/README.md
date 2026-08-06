@@ -65,11 +65,22 @@ Your framework from the previous lessons is a simplified one. Remember all limit
 4. Fill in the three descriptions below: what happens in the scenario, how your framework fails, and what change to the framework would fix it. Add screenshots if needed.
 5. Commit and push everything, and be ready to demonstrate your failure cases at the practice session
 
-##### Failure case 1
-...
 
-##### Failure case 2
-...
+### Failure Case 1
+**Scenario:** The autonomous car proceeded before the pedestrian had completely crossed the road.
+**Framework failure:** The decision-making incorrectly judged that it was safe to continue, even though the pedestrian was still within the crossing area.
+**Suggested improvement:** Require the vehicle to wait until pedestrians have fully cleared the crosswalk before proceeding, or introduce a larger safety buffer around pedestrians.
 
-##### Failure case 3
-...
+### Failure Case 2
+**Scenario:** The autonomous car failed to stop and did not yield to the red vehicle.
+**Framework failure:** The perception or planning system did not correctly recognize the need to stop or yield, resulting in unsafe behavior.
+**Suggested improvement:** Improve vehicle detection and right-of-way logic to ensure the car reliably stops and yields when required.
+
+### Failure Case 3
+**Scenario:** Another vehicle made a last-minute turn that the autonomous car did not anticipate.   
+**Framework failure:** The prediction module assumed the other vehicle would continue straight and failed to account for sudden changes in trajectory.
+**Suggested improvement:** Enhance trajectory prediction by considering multiple possible maneuvers and responding more cautiously when another vehicle's intent is uncertain.
+
+
+
+
