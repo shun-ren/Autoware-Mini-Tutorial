@@ -127,7 +127,7 @@ class YoloTrafficLightDetector:
         # If the local path has waypoints, create a shapely LineString from them
         #         and collect the ids of the stop lines that intersect with it
         #         into stop_line_ids_on_path.
-        if local_path_msg.waypoints is not None:
+        if local_path_msg.waypoints:
             local_path_linestring = shapely.LineString([(wp.position.x, wp.position.y) for wp in local_path_msg.waypoints])
 
             for stop_line_id, stop_line_linestring in self.stop_lines.items():
@@ -192,14 +192,9 @@ class YoloTrafficLightDetector:
                 yolo_rois, classes, scores = yolo_rois[mask], classes[mask], scores[mask]
                 tfl_results, match_dict = self.match_map_and_yolo_rois(map_rois, yolo_rois, classes, scores)
                 tfl_status.statuses.extend(tfl_results)
-                pass
 
         self.tfl_status_pub.publish(tfl_status)
-
         self.publish_roi_images(image, map_rois, yolo_rois, match_dict, image_time_stamp)
-
-        #print([f"stop_line_ids_on_path: {roi[0]} map_rois: ({roi[2]}, {roi[4]}) to ({roi[3]}, {roi[5]})\n" for roi in map_rois])
-
 
     def calculate_roi_coordinates(self, stop_line_ids_on_path, transform):
         rois = []
@@ -258,6 +253,7 @@ class YoloTrafficLightDetector:
         # for every map roi
         for stop_line_id, traffic_light_id, x1_map, x2_map, y1_map, y2_map in map_rois:
             matched_roi = None
+            best_iou = 0.0
 
             # TODO 4: Find the YOLO detection that best matches this map ROI.
             #         Loop over the YOLO detections, calculate the IOU between the map ROI
@@ -268,7 +264,9 @@ class YoloTrafficLightDetector:
                 iou_score = self.calculate_iou(np.array([[x1_map, y1_map, x2_map, y2_map]]), yolo_roi[np.newaxis, :])[0][0]
                 if iou_score <= self.iou_threshold:
                     continue
-                elif matched_roi is None or iou_score > matched_roi[0]:
+
+                if iou_score > best_iou:
+                    best_iou = iou_score
                     matched_roi = (cls, score, yolo_roi, idx)
 
             tfl_result = StopLineStatus()

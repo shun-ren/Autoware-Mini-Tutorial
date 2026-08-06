@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-from marshal import load
-
 import rospy
 import shapely
 import math
@@ -52,7 +50,6 @@ class SimpleCollisionChecker:
 
         # Extract stop lines and traffic lights from the lanelet2 map
         self.stop_lines = self.get_traffic_light_stop_lines(lanelet2_map)
-        self.traffic_lights = self.get_traffic_light_bboxes(lanelet2_map)
         
         # Variables
         self.detected_objects = None
@@ -74,21 +71,25 @@ class SimpleCollisionChecker:
         rospy.loginfo("%s - initialized", rospy.get_name())
 
     def traffic_light_status_callback(self, msg):
-        self.stopline_statuses = {status.stop_line_id: status for status in msg.statuses}
+        with self.lock:
+            self.stopline_statuses = {status.stop_line_id: status for status in msg.statuses}
 
     def detected_objects_callback(self, msg):
-        self.detected_objects = msg.objects
+        with self.lock:
+            self.detected_objects = msg.objects
 
     def global_path_callback(self, msg):
-        if len(msg.waypoints) > 0:
-            self.goal_point = msg.waypoints[-1].position
-        else:
-            self.goal_point = None
+        with self.lock:
+            if len(msg.waypoints) > 0:
+                self.goal_point = msg.waypoints[-1].position
+            else:
+                self.goal_point = None
 
     def path_callback(self, msg):
         with self.lock:
             detected_objects = self.detected_objects
             goal_point = self.goal_point
+            stopline_statuses = self.stopline_statuses.copy()
 
         collision_points = np.array([], dtype=DTYPE)
 
@@ -110,6 +111,8 @@ class SimpleCollisionChecker:
         shapely.prepare(local_path_buffer)
         if detected_objects is not None and len(detected_objects) > 0:
             for obj in detected_objects:
+                speed = math.hypot(obj.velocity.x, obj.velocity.y)
+                category = 3 if speed < self.stopped_speed_limit else 4
                 object_polygon = shapely.Polygon([(obj.convex_hull[i], obj.convex_hull[i + 1]) 
                                                   for i in range(0, len(obj.convex_hull), 3)])
                 if local_path_buffer.intersects(object_polygon):
@@ -127,7 +130,7 @@ class SimpleCollisionChecker:
                                 obj.velocity.z,
                                 self.braking_safety_distance_obstacle,
                                 np.inf,
-                                4
+                                category
                             )], dtype=DTYPE)
                         )
         # Add goal point as collision point.
@@ -144,19 +147,13 @@ class SimpleCollisionChecker:
 
         #adding stop line collision points for red traffic lights
         for stop_line_id, stop_line in self.stop_lines.items():
-            status = self.stopline_statuses.get(stop_line_id)
+            status = stopline_statuses.get(stop_line_id)
             if status is None or status.status != StopLineStatus.STATUS_STOP:
                 continue
             if local_path_linestring.intersects(stop_line):
                 intersection_geometry = local_path_linestring.intersection(stop_line)
                 intersection_points = shapely.get_coordinates(intersection_geometry)
                 for x, y in intersection_points:
-                    rospy.loginfo(
-                        "RED traffic light detected: stopping at stop line %s (collision point: %.2f, %.2f)",
-                        stop_line_id,
-                        x,
-                        y
-                    )
                     collision_points = np.append(
                         collision_points,
                         np.array([(
@@ -197,30 +194,6 @@ class SimpleCollisionChecker:
 
         return stop_lines
 
-    @staticmethod
-    def get_traffic_light_bboxes(lanelet2_map):
-            """
-            Iterate over all regulatory elements with subtype traffic_light and extract the traffic lights
-            with their corner coordinates. One stop line can be controlled by several traffic lights (poles).
-            :param lanelet2_map: lanelet2 map
-            :return: {stop_line_id: {traffic_light_id: [top_left, top_right, bottom_left, bottom_right], ...}, ...}
-            """
-            traffic_lights = {}
-            for reg_el in lanelet2_map.regulatoryElementLayer:
-                if reg_el.attributes["subtype"] == "traffic_light":
-                    stop_line_id = reg_el.parameters["ref_line"][0].id
-    
-                    for tfl in reg_el.parameters["refers"]:
-                        tfl_height = float(tfl.attributes["height"])
-                        # corner coordinates in order: top_left, top_right, bottom_left, bottom_right
-                        corners = [(tfl[0].x, tfl[0].y, tfl[0].z + tfl_height),
-                                   (tfl[1].x, tfl[1].y, tfl[1].z + tfl_height),
-                                   (tfl[0].x, tfl[0].y, tfl[0].z),
-                                   (tfl[1].x, tfl[1].y, tfl[1].z)]
-                        traffic_lights.setdefault(stop_line_id, {})[tfl.id] = corners
-    
-            return traffic_lights
-    
     def run(self):
         rospy.spin()
 
